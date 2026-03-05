@@ -1,36 +1,67 @@
-// Progress Tracker Application
+// Progress Tracker Application - Multi-Project Version
 class ProgressTracker {
     constructor() {
-        this.entries = [];
+        this.projects = [];
+        this.currentProjectId = null;
+        this.currentFilter = 'all';
         this.loadFromStorage();
         this.init();
     }
 
     init() {
         this.setupEventListeners();
-        this.setTodayDate();
+        this.renderProjects();
+        this.selectFirstProject();
         this.renderTimeline();
-        this.updateStats();
     }
 
     setupEventListeners() {
-        // Form submission
-        document.getElementById('entryForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.addEntry();
+        // Project management
+        document.getElementById('newProjectBtn').addEventListener('click', () => {
+            this.openNewProjectModal();
         });
 
-        // Show/hide conditional fields based on entry type
-        document.getElementById('entryType').addEventListener('change', (e) => {
+        document.getElementById('confirmProjectBtn').addEventListener('click', () => {
+            this.createProject();
+        });
+
+        document.getElementById('cancelProjectBtn').addEventListener('click', () => {
+            this.closeNewProjectModal();
+        });
+
+        document.getElementById('deleteProjectBtn').addEventListener('click', () => {
+            this.deleteCurrentProject();
+        });
+
+        document.getElementById('projectNameInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.createProject();
+            }
+        });
+
+        // Form submission
+        document.getElementById('quickAddForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.addChange();
+        });
+
+        // Form field visibility
+        document.getElementById('changeType').addEventListener('change', (e) => {
             this.toggleConditionalFields(e.target.value);
         });
 
-        // Export data
+        // Timeline filters
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.switchFilter(e.target.dataset.filter);
+            });
+        });
+
+        // Export/Import
         document.getElementById('exportBtn').addEventListener('click', () => {
             this.exportData();
         });
 
-        // Import data
         document.getElementById('importBtn').addEventListener('click', () => {
             document.getElementById('importFile').click();
         });
@@ -39,170 +70,276 @@ class ProgressTracker {
             this.importData(e);
         });
 
-        // Clear data
-        document.getElementById('clearBtn').addEventListener('click', () => {
-            if (confirm('Are you sure you want to clear all data? This cannot be undone.')) {
-                this.clearAllData();
-            }
-        });
-
         // Modal close
-        document.addEventListener('click', (e) => {
-            const modal = document.getElementById('imageModal');
-            if (modal && e.target === modal) {
-                modal.classList.remove('show');
+        document.getElementById('newProjectModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('newProjectModal')) {
+                this.closeNewProjectModal();
             }
+        });
+
+        document.querySelector('.modal-close').addEventListener('click', () => {
+            this.closeNewProjectModal();
         });
     }
 
-    setTodayDate() {
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('entryDate').value = today;
+    openNewProjectModal() {
+        document.getElementById('projectNameInput').value = '';
+        document.getElementById('projectNameInput').focus();
+        document.getElementById('newProjectModal').classList.add('show');
     }
 
-    toggleConditionalFields(type) {
-        document.getElementById('evidenceField').classList.add('hidden');
-        document.getElementById('resourceField').classList.add('hidden');
+    closeNewProjectModal() {
+        document.getElementById('newProjectModal').classList.remove('show');
+    }
 
-        if (type === 'evidence') {
-            document.getElementById('evidenceField').classList.remove('hidden');
-        } else if (type === 'resource') {
-            document.getElementById('resourceField').classList.remove('hidden');
+    createProject() {
+        const name = document.getElementById('projectNameInput').value.trim();
+        if (!name) {
+            alert('Please enter a project name');
+            return;
+        }
+
+        const project = {
+            id: Date.now(),
+            name: name,
+            createdAt: new Date().toISOString(),
+            entries: []
+        };
+
+        this.projects.push(project);
+        this.saveToStorage();
+        this.renderProjects();
+        this.selectProject(project.id);
+        this.closeNewProjectModal();
+    }
+
+    deleteCurrentProject() {
+        if (!this.currentProjectId) return;
+
+        const project = this.projects.find(p => p.id === this.currentProjectId);
+        if (!project) return;
+
+        if (confirm(`Delete project "${project.name}"? This cannot be undone.`)) {
+            this.projects = this.projects.filter(p => p.id !== this.currentProjectId);
+            this.saveToStorage();
+            this.renderProjects();
+            this.selectFirstProject();
         }
     }
 
-    addEntry() {
-        const form = document.getElementById('entryForm');
+    selectProject(projectId) {
+        this.currentProjectId = projectId;
+        this.currentFilter = 'all';
+        this.renderProjects();
+        this.renderTimeline();
+        this.updateProjectHeader();
+    }
+
+    selectFirstProject() {
+        if (this.projects.length > 0) {
+            this.selectProject(this.projects[0].id);
+        }
+    }
+
+    updateProjectHeader() {
+        const project = this.projects.find(p => p.id === this.currentProjectId);
+        if (project) {
+            document.getElementById('projectTitle').textContent = '📊 ' + this.escapeHtml(project.name);
+            document.getElementById('projectSubtitle').textContent = `${project.entries.length} entries`;
+        }
+    }
+
+    renderProjects() {
+        const list = document.getElementById('projectsList');
+        if (this.projects.length === 0) {
+            list.innerHTML = '<p style="color: rgba(255,255,255,0.7); text-align: center; padding: 20px 0;">No projects yet</p>';
+            return;
+        }
+
+        list.innerHTML = this.projects.map(project => {
+            const isActive = project.id === this.currentProjectId;
+            return `
+                <div class="project-item ${isActive ? 'active' : ''}" data-id="${project.id}">
+                    📁 ${this.escapeHtml(project.name)}
+                </div>
+            `;
+        }).join('');
+
+        document.querySelectorAll('.project-item').forEach(item => {
+            item.addEventListener('click', () => {
+                this.selectProject(parseInt(item.dataset.id));
+            });
+        });
+    }
+
+    toggleConditionalFields(type) {
+        document.getElementById('goalDateField').classList.add('hidden');
+        document.getElementById('resourceLinkField').classList.add('hidden');
+
+        if (type === 'goal') {
+            document.getElementById('goalDateField').classList.remove('hidden');
+        } else if (type === 'resource') {
+            document.getElementById('resourceLinkField').classList.remove('hidden');
+        }
+    }
+
+    switchFilter(filter) {
+        this.currentFilter = filter;
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.filter === filter);
+        });
+        this.renderTimeline();
+    }
+
+    addChange() {
+        const project = this.projects.find(p => p.id === this.currentProjectId);
+        if (!project) return;
+
+        const today = new Date().toISOString().split('T')[0];
         const entry = {
             id: Date.now(),
-            date: document.getElementById('entryDate').value,
-            type: document.getElementById('entryType').value,
-            title: document.getElementById('entryTitle').value,
-            description: document.getElementById('entryDescription').value,
-            image: null,
+            date: document.getElementById('changeDate').value || today,
+            type: document.getElementById('changeType').value,
+            title: document.getElementById('changeTitle').value,
+            description: document.getElementById('changeDescription').value,
+            dueDate: null,
             link: null
         };
 
-        // Handle image upload
-        const imageInput = document.getElementById('entryImage');
-        if (imageInput.files.length > 0) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                entry.image = e.target.result;
-                this.entries.push(entry);
-                this.entries.sort((a, b) => new Date(a.date) - new Date(b.date));
-                this.saveToStorage();
-                this.renderTimeline();
-                this.updateStats();
-                form.reset();
-                this.setTodayDate();
-            };
-            reader.readAsDataURL(imageInput.files[0]);
-        } else {
-            // Handle resource link
-            const linkInput = document.getElementById('entryLink');
-            if (linkInput && linkInput.value) {
-                entry.link = linkInput.value;
+        // Handle goal due date
+        if (entry.type === 'goal') {
+            const dueDate = document.getElementById('goalDueDate').value;
+            if (dueDate) {
+                entry.dueDate = dueDate;
             }
-            this.entries.push(entry);
-            this.entries.sort((a, b) => new Date(a.date) - new Date(b.date));
-            this.saveToStorage();
-            this.renderTimeline();
-            this.updateStats();
-            form.reset();
-            this.setTodayDate();
+        }
+
+        // Handle resource link
+        if (entry.type === 'resource') {
+            const link = document.getElementById('changeLink').value;
+            if (link) {
+                entry.link = link;
+            }
+        }
+
+        project.entries.push(entry);
+        project.entries.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        this.saveToStorage();
+        this.renderTimeline();
+        this.updateProjectHeader();
+        this.resetForm();
+    }
+
+    resetForm() {
+        document.getElementById('quickAddForm').reset();
+        document.getElementById('changeDate').value = '';
+        this.toggleConditionalFields('change');
+    }
+
+    getFilteredEntries() {
+        const project = this.projects.find(p => p.id === this.currentProjectId);
+        if (!project) return [];
+
+        switch(this.currentFilter) {
+            case 'change':
+                return project.entries.filter(e => e.type === 'change');
+            case 'goal':
+                return project.entries.filter(e => e.type === 'goal');
+            case 'all':
+            default:
+                return project.entries;
         }
     }
 
     renderTimeline() {
         const timeline = document.getElementById('timeline');
+        const filteredEntries = this.getFilteredEntries();
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        if (this.entries.length === 0) {
-            timeline.innerHTML = '<div class="timeline-empty">📝 No entries yet. Start documenting your progress!</div>';
+        if (filteredEntries.length === 0) {
+            let message = '📝 No entries yet. Add your first change!';
+            if (this.currentFilter === 'goal') {
+                message = '🎯 No goals set. Create one!';
+            } else if (this.currentFilter === 'change') {
+                message = '✅ No changes recorded yet.';
+            }
+            timeline.innerHTML = `<div class="timeline-empty">${message}</div>`;
             return;
         }
 
-        timeline.innerHTML = this.entries.map(entry => {
-            const entryDate = new Date(entry.date);
-            entryDate.setHours(0, 0, 0, 0);
-            const isToday = entryDate.getTime() === today.getTime();
-            const isFuture = entryDate > today;
-
-            let content = `
-                <div class="timeline-item ${isToday ? 'is-today' : ''} ${isFuture ? 'is-future' : ''}">
-                    <div class="timeline-marker"></div>
-                    <div class="timeline-content">
-                        <div class="timeline-date">${this.formatDate(entry.date)}</div>
-                        <span class="timeline-type ${entry.type}">${this.getTypeEmoji(entry.type)} ${this.getTypeLabel(entry.type)}</span>
-                        <h3 class="timeline-title">${this.escapeHtml(entry.title)}</h3>
-                        <p class="timeline-description">${this.escapeHtml(entry.description)}</p>
-            `;
-
-            if (entry.image) {
-                content += `<img src="${entry.image}" alt="${this.escapeHtml(entry.title)}" class="timeline-image" onclick="tracker.openImageModal(this.src)">`;
+        // Group entries by date
+        const entriesByDate = {};
+        filteredEntries.forEach(entry => {
+            if (!entriesByDate[entry.date]) {
+                entriesByDate[entry.date] = [];
             }
+            entriesByDate[entry.date].push(entry);
+        });
 
-            if (entry.link) {
-                content += `<a href="${this.escapeHtml(entry.link)}" target="_blank" class="timeline-link">🔗 ${this.escapeHtml(entry.link)}</a>`;
-            }
+        timeline.innerHTML = Object.keys(entriesByDate)
+            .sort((a, b) => new Date(b) - new Date(a))
+            .map(date => {
+                const entries = entriesByDate[date];
+                const entryDate = new Date(date);
+                entryDate.setHours(0, 0, 0, 0);
+                const isToday = entryDate.getTime() === today.getTime();
+                const isFuture = entryDate > today;
 
-            content += `<button class="btn btn-delete btn-small" onclick="tracker.deleteEntry(${entry.id})">Delete</button>`;
-            content += `</div></div>`;
+                return entries.map((entry, idx) => {
+                    let content = `
+                        <div class="timeline-item ${isToday ? 'is-today' : ''} ${isFuture ? 'is-future' : ''}">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <div class="timeline-date">${idx === 0 ? this.formatDate(date) : ''}</div>
+                                <span class="timeline-type ${entry.type}">${this.getTypeEmoji(entry.type)} ${this.getTypeLabel(entry.type)}</span>
+                                <h3 class="timeline-title">${this.escapeHtml(entry.title)}</h3>
+                    `;
 
-            return content;
-        }).join('');
+                    if (entry.description) {
+                        content += `<p class="timeline-description">${this.escapeHtml(entry.description)}</p>`;
+                    }
+
+                    if (entry.dueDate) {
+                        const dueDateObj = new Date(entry.dueDate);
+                        const dueDateFormatted = dueDateObj.toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                        });
+                        content += `<p class="timeline-due-date">📅 Due: ${dueDateFormatted}</p>`;
+                    }
+
+                    if (entry.link) {
+                        content += `<a href="${this.escapeHtml(entry.link)}" target="_blank" class="timeline-link">🔗 ${this.escapeHtml(entry.link)}</a>`;
+                    }
+
+                    content += `<button class="btn btn-delete btn-small" onclick="tracker.deleteEntry(${entry.id})">Delete</button>`;
+                    content += `</div></div>`;
+
+                    return content;
+                }).join('');
+            }).join('');
     }
 
     deleteEntry(id) {
-        if (confirm('Are you sure you want to delete this entry?')) {
-            this.entries = this.entries.filter(entry => entry.id !== id);
+        const project = this.projects.find(p => p.id === this.currentProjectId);
+        if (!project) return;
+
+        if (confirm('Delete this entry?')) {
+            project.entries = project.entries.filter(e => e.id !== id);
             this.saveToStorage();
             this.renderTimeline();
-            this.updateStats();
+            this.updateProjectHeader();
         }
-    }
-
-    openImageModal(src) {
-        const modal = document.createElement('div');
-        modal.id = 'imageModal';
-        modal.className = 'modal show';
-        modal.innerHTML = `
-            <div class="modal-content">
-                <img src="${src}" alt="Evidence">
-                <span class="modal-close" onclick="this.parentElement.parentElement.remove()">✕</span>
-            </div>
-        `;
-        document.body.appendChild(modal);
-    }
-
-    updateStats() {
-        const today = new Date();
-        const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-        const weekEntries = this.entries.filter(entry => {
-            const entryDate = new Date(entry.date);
-            return entryDate >= weekAgo && entryDate <= today;
-        });
-
-        const goalCount = weekEntries.filter(e => e.type === 'goal').length;
-        const taskCount = weekEntries.filter(e => e.type === 'accomplished').length;
-        const pivotCount = weekEntries.filter(e => e.type === 'pivot').length;
-        const evidenceCount = weekEntries.filter(e => e.type === 'evidence').length;
-
-        document.getElementById('goalCount').textContent = goalCount;
-        document.getElementById('taskCount').textContent = taskCount;
-        document.getElementById('pivotCount').textContent = pivotCount;
-        document.getElementById('evidenceCount').textContent = evidenceCount;
     }
 
     getTypeLabel(type) {
         const labels = {
+            change: 'Change Made',
             goal: 'Goal',
-            accomplished: 'Accomplished Task',
             pivot: 'Pivot Point',
-            evidence: 'Visual Evidence',
             resource: 'Resource Link'
         };
         return labels[type] || type;
@@ -210,10 +347,9 @@ class ProgressTracker {
 
     getTypeEmoji(type) {
         const emojis = {
+            change: '✅',
             goal: '🎯',
-            accomplished: '✅',
             pivot: '🔄',
-            evidence: '📸',
             resource: '🔗'
         };
         return emojis[type] || '📝';
@@ -233,27 +369,23 @@ class ProgressTracker {
 
     // Storage Management
     saveToStorage() {
-        const dataToSave = this.entries.map(entry => ({
-            ...entry,
-            // Images are stored as data URLs which are already serializable
-        }));
-        localStorage.setItem('progressTrackerData', JSON.stringify(dataToSave));
+        localStorage.setItem('progressTrackerProjects', JSON.stringify(this.projects));
     }
 
     loadFromStorage() {
-        const stored = localStorage.getItem('progressTrackerData');
+        const stored = localStorage.getItem('progressTrackerProjects');
         if (stored) {
             try {
-                this.entries = JSON.parse(stored);
+                this.projects = JSON.parse(stored);
             } catch (e) {
                 console.error('Error loading stored data:', e);
-                this.entries = [];
+                this.projects = [];
             }
         }
     }
 
     exportData() {
-        const dataStr = JSON.stringify(this.entries, null, 2);
+        const dataStr = JSON.stringify(this.projects, null, 2);
         const dataBlob = new Blob([dataStr], { type: 'application/json' });
         const url = URL.createObjectURL(dataBlob);
         const link = document.createElement('a');
@@ -272,30 +404,20 @@ class ProgressTracker {
             try {
                 const imported = JSON.parse(e.target.result);
                 if (Array.isArray(imported)) {
-                    this.entries = imported;
-                    this.entries.sort((a, b) => new Date(a.date) - new Date(b.date));
+                    this.projects = imported;
                     this.saveToStorage();
-                    this.renderTimeline();
-                    this.updateStats();
+                    this.renderProjects();
+                    this.selectFirstProject();
                     alert('✅ Data imported successfully!');
                 } else {
-                    alert('❌ Invalid file format. Please import a valid Progress Tracker backup.');
+                    alert('❌ Invalid file format.');
                 }
             } catch (error) {
                 alert('❌ Error importing file: ' + error.message);
             }
         };
         reader.readAsText(file);
-        // Reset file input
         event.target.value = '';
-    }
-
-    clearAllData() {
-        this.entries = [];
-        this.saveToStorage();
-        this.renderTimeline();
-        this.updateStats();
-        alert('✅ All data cleared!');
     }
 }
 
