@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progress Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>📊 Innovation Progress Tracker</h1>
+            <p class="subtitle">Your Command Center for Tracking Ideas to Reality</p>
+        </header>
+
+        <!-- Main Content -->
+        <main>
+            <!-- New Entry Form -->
+            <section class="form-section">
+                <h2>Add New Entry</h2>
+                <form id="entryForm" class="entry-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="entryDate">Date:</label>
+                            <input type="date" id="entryDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="entryType">Type:</label>
+                            <select id="entryType" required>
+                                <option value="">-- Select Type --</option>
+                                <option value="goal">🎯 Goal</option>
+                                <option value="accomplished">✅ Accomplished Task</option>
+                                <option value="pivot">🔄 Pivot Point</option>
+                                <option value="evidence">📸 Visual Evidence</option>
+                                <option value="resource">🔗 Resource Link</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="entryTitle">Title:</label>
+                        <input type="text" id="entryTitle" placeholder="Brief title or description" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="entryDescription">Details:</label>
+                        <textarea id="entryDescription" placeholder="Write your details here..." rows="4"></textarea>
+                    </div>
+
+                    <!-- Conditional fields -->
+                    <div id="evidenceField" class="form-group hidden">
+                        <label for="entryImage">Upload Image:</label>
+                        <input type="file" id="entryImage" accept="image/*">
+                        <small>Optional: Add a photo of your work-in-progress or finished prototype</small>
+                    </div>
+
+                    <div id="resourceField" class="form-group hidden">
+                        <label for="entryLink">Resource Link:</label>
+                        <input type="url" id="entryLink" placeholder="https://example.com">
+                        <small>Optional: Add a link to tutorials, articles, or resources you used</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Add Entry</button>
+                </form>
+            </section>
+
+            <!-- Timeline Section -->
+            <section class="timeline-section">
+                <h2>Your Timeline</h2>
+                <div class="timeline-container">
+                    <div class="timeline" id="timeline">
+                        <!-- Timeline will be populated by JavaScript -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Summary Stats -->
+            <section class="stats-section">
+                <h2>This Week's Summary</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">🎯</div>
+                        <div class="stat-content">
+                            <div class="stat-number" id="goalCount">0</div>
+                            <div class="stat-label">Goals Set</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-content">
+                            <div class="stat-number" id="taskCount">0</div>
+                            <div class="stat-label">Tasks Completed</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🔄</div>
+                        <div class="stat-content">
+                            <div class="stat-number" id="pivotCount">0</div>
+                            <div class="stat-label">Pivot Points</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📸</div>
+                        <div class="stat-content">
+                            <div class="stat-number" id="evidenceCount">0</div>
+                            <div class="stat-label">Evidence Pieces</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Data Management -->
+            <section class="data-section">
+                <h2>Data Management</h2>
+                <div class="data-actions">
+                    <button class="btn btn-secondary" id="exportBtn">📥 Export Data (JSON)</button>
+                    <button class="btn btn-secondary" id="importBtn">📤 Import Data</button>
+                    <input type="file" id="importFile" accept=".json" style="display: none;">
+                    <button class="btn btn-danger" id="clearBtn">🗑️ Clear All Data</button>
+                </div>
+                <p class="data-info">Your entries are saved in your browser's local storage. Export your data to backup!</p>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>💡 Pro-Tip: Update your tracker at least once per week to capture your journey!</p>
+            <p>Created for MS Advanced Innovation | 7th & 8th Grade</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
