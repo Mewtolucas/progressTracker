@@ -65,9 +65,16 @@
                 </form>
             </section>
 
+            <!-- View Navigation -->
+            <section class="view-nav">
+                <button class="view-btn active" data-view="all">📅 All Entries</button>
+                <button class="view-btn" data-view="goals">🎯 Goals</button>
+                <button class="view-btn" data-view="today">📝 Changes Today</button>
+            </section>
+
             <!-- Timeline Section -->
             <section class="timeline-section">
-                <h2>Your Timeline</h2>
+                <h2 id="timelineTitle">Your Timeline</h2>
                 <div class="timeline-container">
                     <div class="timeline" id="timeline">
                         <!-- Timeline will be populated by JavaScript -->

@@ -2,6 +2,7 @@
 class ProgressTracker {
     constructor() {
         this.entries = [];
+        this.currentView = 'all';
         this.loadFromStorage();
         this.init();
     }
@@ -23,6 +24,13 @@ class ProgressTracker {
         // Show/hide conditional fields based on entry type
         document.getElementById('entryType').addEventListener('change', (e) => {
             this.toggleConditionalFields(e.target.value);
+        });
+
+        // View navigation
+        document.querySelectorAll('.view-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.switchView(e.target.dataset.view);
+            });
         });
 
         // Export data
@@ -53,6 +61,48 @@ class ProgressTracker {
                 modal.classList.remove('show');
             }
         });
+    }
+
+    switchView(view) {
+        this.currentView = view;
+
+        // Update button states
+        document.querySelectorAll('.view-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.view === view);
+        });
+
+        this.renderTimeline();
+    }
+
+    getFilteredEntries() {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        switch(this.currentView) {
+            case 'goals':
+                return this.entries.filter(e => e.type === 'goal');
+            case 'today':
+                return this.entries.filter(e => {
+                    const entryDate = new Date(e.date);
+                    entryDate.setHours(0, 0, 0, 0);
+                    return entryDate.getTime() === today.getTime();
+                });
+            case 'all':
+            default:
+                return this.entries;
+        }
+    }
+
+    getTimelineTitle() {
+        switch(this.currentView) {
+            case 'goals':
+                return 'Your Goals';
+            case 'today':
+                return 'Today\'s Changes';
+            case 'all':
+            default:
+                return 'Your Timeline';
+        }
     }
 
     setTodayDate() {
@@ -116,15 +166,25 @@ class ProgressTracker {
 
     renderTimeline() {
         const timeline = document.getElementById('timeline');
+        const filteredEntries = this.getFilteredEntries();
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        if (this.entries.length === 0) {
-            timeline.innerHTML = '<div class="timeline-empty">📝 No entries yet. Start documenting your progress!</div>';
+        // Update title
+        document.getElementById('timelineTitle').textContent = this.getTimelineTitle();
+
+        if (filteredEntries.length === 0) {
+            let emptyMessage = '📝 No entries yet. Start documenting your progress!';
+            if (this.currentView === 'goals') {
+                emptyMessage = '🎯 No goals set yet. Create your first goal!';
+            } else if (this.currentView === 'today') {
+                emptyMessage = '📝 No changes recorded today yet. Start documenting!';
+            }
+            timeline.innerHTML = `<div class="timeline-empty">${emptyMessage}</div>`;
             return;
         }
 
-        timeline.innerHTML = this.entries.map(entry => {
+        timeline.innerHTML = filteredEntries.map(entry => {
             const entryDate = new Date(entry.date);
             entryDate.setHours(0, 0, 0, 0);
             const isToday = entryDate.getTime() === today.getTime();
