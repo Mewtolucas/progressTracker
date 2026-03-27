@@ -237,6 +237,13 @@ class ProgressTracker {
         this.toggleConditionalFields('change');
     }
 
+    parseLocalDate(dateString) {
+        // Parse "YYYY-MM-DD" as local date, not UTC
+        const [year, month, day] = dateString.split('-');
+        const date = new Date(year, month - 1, day);
+        return date;
+    }
+
     getFilteredEntries() {
         const project = this.projects.find(p => p.id === this.currentProjectId);
         if (!project) return [];
@@ -255,8 +262,10 @@ class ProgressTracker {
     renderTimeline() {
         const timeline = document.getElementById('timeline');
         const filteredEntries = this.getFilteredEntries();
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+
+        // Get today's date in local timezone
+        const todayDate = new Date();
+        const today = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate());
 
         if (filteredEntries.length === 0) {
             let message = '📝 No entries yet. Add your first change!';
@@ -279,11 +288,10 @@ class ProgressTracker {
         });
 
         timeline.innerHTML = Object.keys(entriesByDate)
-            .sort((a, b) => new Date(b) - new Date(a))
+            .sort((a, b) => this.parseLocalDate(b) - this.parseLocalDate(a))
             .map(date => {
                 const entries = entriesByDate[date];
-                const entryDate = new Date(date);
-                entryDate.setHours(0, 0, 0, 0);
+                const entryDate = this.parseLocalDate(date);
                 const isToday = entryDate.getTime() === today.getTime();
                 const isFuture = entryDate > today;
 
