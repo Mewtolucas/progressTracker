@@ -121,6 +121,12 @@ body {
     opacity: 0.95;
 }
 
+.header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
 /* Main scrollable content */
 main {
     padding: 30px 40px;
@@ -550,6 +556,34 @@ main {
     display: flex;
     gap: 10px;
     justify-content: flex-end;
+}
+
+.modal-body p {
+    margin-bottom: 15px;
+    color: var(--text-secondary);
+}
+
+.share-link-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.share-link-input {
+    flex: 1;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.9em;
+    font-family: 'Courier New', monospace;
+    background: var(--light-bg);
+    color: var(--text-primary);
+}
+
+.share-note {
+    font-size: 0.85em;
+    color: var(--text-secondary);
+    font-style: italic;
 }
 
 

@@ -37,7 +37,10 @@
                     <h1 id="projectTitle">📊 Project Name</h1>
                     <p class="subtitle" id="projectSubtitle">Track your progress</p>
                 </div>
-                <button class="btn btn-danger btn-small" id="deleteProjectBtn">Delete Project</button>
+                <div class="header-actions">
+                    <button class="btn btn-secondary btn-small" id="shareProjectBtn">📤 Share</button>
+                    <button class="btn btn-danger btn-small" id="deleteProjectBtn">Delete Project</button>
+                </div>
             </header>
 
             <!-- Quick Add Changes Form -->
@@ -118,6 +121,23 @@
             <div class="modal-footer">
                 <button class="btn btn-primary" id="confirmProjectBtn">Create</button>
                 <button class="btn btn-secondary" id="cancelProjectBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="shareModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Share Project</h2>
+                <span class="modal-close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Share this link with others to let them view your progress:</p>
+                <div class="share-link-container">
+                    <input type="text" id="shareLink" readonly class="share-link-input">
+                    <button class="btn btn-primary btn-small" id="copyShareLinkBtn">Copy Link</button>
+                </div>
+                <p class="share-note">People with this link can view your project but cannot edit it.</p>
             </div>
         </div>
     </div>

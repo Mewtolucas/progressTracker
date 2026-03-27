@@ -4,15 +4,49 @@ class ProgressTracker {
         this.projects = [];
         this.currentProjectId = null;
         this.currentFilter = 'all';
+        this.isReadOnly = false;
+        this.viewingSharedProject = null;
         this.loadFromStorage();
+        this.checkForSharedProject();
         this.init();
     }
 
     init() {
         this.setupEventListeners();
-        this.renderProjects();
-        this.selectFirstProject();
-        this.renderTimeline();
+        if (this.isReadOnly) {
+            this.renderReadOnlyView();
+        } else {
+            this.renderProjects();
+            this.selectFirstProject();
+            this.renderTimeline();
+        }
+    }
+
+    checkForSharedProject() {
+        const params = new URLSearchParams(window.location.search);
+        const shareCode = params.get('share');
+
+        if (shareCode) {
+            this.loadSharedProject(shareCode);
+        }
+    }
+
+    loadSharedProject(shareCode) {
+        const stored = localStorage.getItem('sharedProjects');
+        if (!stored) return;
+
+        try {
+            const sharedProjects = JSON.parse(stored);
+            const sharedData = sharedProjects[shareCode];
+
+            if (sharedData) {
+                this.viewingSharedProject = sharedData;
+                this.isReadOnly = true;
+                document.title = `Progress Tracker - ${sharedData.name} (Shared)`;
+            }
+        } catch (e) {
+            console.error('Error loading shared project:', e);
+        }
     }
 
     setupEventListeners() {
@@ -31,6 +65,14 @@ class ProgressTracker {
 
         document.getElementById('deleteProjectBtn').addEventListener('click', () => {
             this.deleteCurrentProject();
+        });
+
+        document.getElementById('shareProjectBtn').addEventListener('click', () => {
+            this.openShareModal();
+        });
+
+        document.getElementById('copyShareLinkBtn').addEventListener('click', () => {
+            this.copyShareLink();
         });
 
         document.getElementById('projectNameInput').addEventListener('keypress', (e) => {
@@ -77,8 +119,16 @@ class ProgressTracker {
             }
         });
 
-        document.querySelector('.modal-close').addEventListener('click', () => {
-            this.closeNewProjectModal();
+        document.getElementById('shareModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('shareModal')) {
+                this.closeShareModal();
+            }
+        });
+
+        document.querySelectorAll('.modal-close').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.target.closest('.modal').classList.remove('show');
+            });
         });
     }
 
@@ -103,7 +153,8 @@ class ProgressTracker {
             id: Date.now(),
             name: name,
             createdAt: new Date().toISOString(),
-            entries: []
+            entries: [],
+            shareCode: null
         };
 
         this.projects.push(project);
@@ -125,6 +176,100 @@ class ProgressTracker {
             this.renderProjects();
             this.selectFirstProject();
         }
+    }
+
+    generateShareCode() {
+        return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    }
+
+    openShareModal() {
+        if (!this.currentProjectId) return;
+
+        const project = this.projects.find(p => p.id === this.currentProjectId);
+        if (!project) return;
+
+        // Generate share code if doesn't exist
+        if (!project.shareCode) {
+            project.shareCode = this.generateShareCode();
+            this.saveToStorage();
+        }
+
+        // Store shared project data
+        this.storeSharedProject(project);
+
+        const shareLink = `${window.location.origin}${window.location.pathname}?share=${project.shareCode}`;
+        document.getElementById('shareLink').value = shareLink;
+        document.getElementById('shareModal').classList.add('show');
+    }
+
+    closeShareModal() {
+        document.getElementById('shareModal').classList.remove('show');
+    }
+
+    storeSharedProject(project) {
+        let sharedProjects = {};
+        const stored = localStorage.getItem('sharedProjects');
+        if (stored) {
+            try {
+                sharedProjects = JSON.parse(stored);
+            } catch (e) {
+                console.error('Error parsing shared projects:', e);
+            }
+        }
+
+        sharedProjects[project.shareCode] = {
+            id: project.id,
+            name: project.name,
+            entries: project.entries,
+            sharedAt: new Date().toISOString()
+        };
+
+        localStorage.setItem('sharedProjects', JSON.stringify(sharedProjects));
+    }
+
+    copyShareLink() {
+        const input = document.getElementById('shareLink');
+        input.select();
+        document.execCommand('copy');
+
+        const btn = document.getElementById('copyShareLinkBtn');
+        const originalText = btn.textContent;
+        btn.textContent = '✓ Copied!';
+        setTimeout(() => {
+            btn.textContent = originalText;
+        }, 2000);
+    }
+
+    renderReadOnlyView() {
+        if (!this.viewingSharedProject) return;
+
+        const project = this.viewingSharedProject;
+
+        // Hide editing controls
+        document.querySelector('.quick-add-section').style.display = 'none';
+        document.getElementById('deleteProjectBtn').style.display = 'none';
+        document.getElementById('shareProjectBtn').style.display = 'none';
+        document.querySelector('.project-controls').style.display = 'none';
+        document.querySelector('.sidebar-footer').style.display = 'none';
+
+        // Update header
+        document.getElementById('projectTitle').textContent = '📊 ' + this.escapeHtml(project.name);
+        document.getElementById('projectSubtitle').textContent = `${project.entries.length} entries (Shared View)`;
+
+        // Hide projects list, show shared indicator
+        const sidebar = document.querySelector('.sidebar');
+        sidebar.innerHTML = `
+            <div class="sidebar-header">
+                <h1>📊 Shared Project</h1>
+            </div>
+            <div style="color: rgba(255,255,255,0.8); padding: 20px 0;">
+                <p style="margin-bottom: 10px;">You're viewing a shared project.</p>
+                <p style="font-size: 0.9em; opacity: 0.8;">All entries shown are read-only.</p>
+            </div>
+        `;
+
+        this.currentFilter = 'all';
+        this.renderTimeline();
     }
 
     selectProject(projectId) {
@@ -237,8 +382,15 @@ class ProgressTracker {
         this.toggleConditionalFields('change');
     }
 
+    parseLocalDate(dateString) {
+        // Parse "YYYY-MM-DD" as local date, not UTC
+        const [year, month, day] = dateString.split('-');
+        const date = new Date(year, month - 1, day);
+        return date;
+    }
+
     getFilteredEntries() {
-        const project = this.projects.find(p => p.id === this.currentProjectId);
+        const project = this.isReadOnly ? this.viewingSharedProject : this.projects.find(p => p.id === this.currentProjectId);
         if (!project) return [];
 
         switch(this.currentFilter) {
@@ -255,8 +407,10 @@ class ProgressTracker {
     renderTimeline() {
         const timeline = document.getElementById('timeline');
         const filteredEntries = this.getFilteredEntries();
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+
+        // Get today's date in local timezone
+        const todayDate = new Date();
+        const today = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate());
 
         if (filteredEntries.length === 0) {
             let message = '📝 No entries yet. Add your first change!';
@@ -279,11 +433,10 @@ class ProgressTracker {
         });
 
         timeline.innerHTML = Object.keys(entriesByDate)
-            .sort((a, b) => new Date(b) - new Date(a))
+            .sort((a, b) => this.parseLocalDate(b) - this.parseLocalDate(a))
             .map(date => {
                 const entries = entriesByDate[date];
-                const entryDate = new Date(date);
-                entryDate.setHours(0, 0, 0, 0);
+                const entryDate = this.parseLocalDate(date);
                 const isToday = entryDate.getTime() === today.getTime();
                 const isFuture = entryDate > today;
 
@@ -315,7 +468,9 @@ class ProgressTracker {
                         content += `<a href="${this.escapeHtml(entry.link)}" target="_blank" class="timeline-link">🔗 ${this.escapeHtml(entry.link)}</a>`;
                     }
 
-                    content += `<button class="btn btn-delete btn-small" onclick="tracker.deleteEntry(${entry.id})">Delete</button>`;
+                    if (!this.isReadOnly) {
+                        content += `<button class="btn btn-delete btn-small" onclick="tracker.deleteEntry(${entry.id})">Delete</button>`;
+                    }
                     content += `</div></div>`;
 
                     return content;
@@ -324,6 +479,11 @@ class ProgressTracker {
     }
 
     deleteEntry(id) {
+        if (this.isReadOnly) {
+            alert('Cannot delete entries in read-only shared view.');
+            return;
+        }
+
         const project = this.projects.find(p => p.id === this.currentProjectId);
         if (!project) return;
 
