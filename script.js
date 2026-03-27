@@ -181,9 +181,11 @@ class ProgressTracker {
         const project = this.projects.find(p => p.id === this.currentProjectId);
         if (!project) return;
 
-        // Encode project data in URL
+        // Include ALL project data in the share link
         const sharedData = {
+            id: project.id,
             name: project.name,
+            createdAt: project.createdAt,
             entries: project.entries,
             sharedAt: new Date().toISOString()
         };
