@@ -24,28 +24,25 @@ class ProgressTracker {
 
     checkForSharedProject() {
         const params = new URLSearchParams(window.location.search);
-        const shareCode = params.get('share');
+        const shareData = params.get('data');
 
-        if (shareCode) {
-            this.loadSharedProject(shareCode);
+        if (shareData) {
+            this.loadSharedProjectFromData(shareData);
         }
     }
 
-    loadSharedProject(shareCode) {
-        const stored = localStorage.getItem('sharedProjects');
-        if (!stored) return;
-
+    loadSharedProjectFromData(encodedData) {
         try {
-            const sharedProjects = JSON.parse(stored);
-            const sharedData = sharedProjects[shareCode];
+            // Decompress and decode the data
+            const decodedStr = atob(encodedData);
+            const sharedData = JSON.parse(decodedStr);
 
-            if (sharedData) {
-                this.viewingSharedProject = sharedData;
-                this.isReadOnly = true;
-                document.title = `Progress Tracker - ${sharedData.name} (Shared)`;
-            }
+            this.viewingSharedProject = sharedData;
+            this.isReadOnly = true;
+            document.title = `Progress Tracker - ${sharedData.name} (Shared)`;
         } catch (e) {
             console.error('Error loading shared project:', e);
+            alert('❌ Invalid or corrupted share link. Please ask the project owner to regenerate it.');
         }
     }
 
@@ -153,8 +150,7 @@ class ProgressTracker {
             id: Date.now(),
             name: name,
             createdAt: new Date().toISOString(),
-            entries: [],
-            shareCode: null
+            entries: []
         };
 
         this.projects.push(project);
@@ -178,9 +174,6 @@ class ProgressTracker {
         }
     }
 
-    generateShareCode() {
-        return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-    }
 
     openShareModal() {
         if (!this.currentProjectId) return;
@@ -188,43 +181,22 @@ class ProgressTracker {
         const project = this.projects.find(p => p.id === this.currentProjectId);
         if (!project) return;
 
-        // Generate share code if doesn't exist
-        if (!project.shareCode) {
-            project.shareCode = this.generateShareCode();
-            this.saveToStorage();
-        }
+        // Encode project data in URL
+        const sharedData = {
+            name: project.name,
+            entries: project.entries,
+            sharedAt: new Date().toISOString()
+        };
 
-        // Store shared project data
-        this.storeSharedProject(project);
+        const encodedData = btoa(JSON.stringify(sharedData));
+        const shareLink = `${window.location.origin}${window.location.pathname}?data=${encodedData}`;
 
-        const shareLink = `${window.location.origin}${window.location.pathname}?share=${project.shareCode}`;
         document.getElementById('shareLink').value = shareLink;
         document.getElementById('shareModal').classList.add('show');
     }
 
     closeShareModal() {
         document.getElementById('shareModal').classList.remove('show');
-    }
-
-    storeSharedProject(project) {
-        let sharedProjects = {};
-        const stored = localStorage.getItem('sharedProjects');
-        if (stored) {
-            try {
-                sharedProjects = JSON.parse(stored);
-            } catch (e) {
-                console.error('Error parsing shared projects:', e);
-            }
-        }
-
-        sharedProjects[project.shareCode] = {
-            id: project.id,
-            name: project.name,
-            entries: project.entries,
-            sharedAt: new Date().toISOString()
-        };
-
-        localStorage.setItem('sharedProjects', JSON.stringify(sharedProjects));
     }
 
     copyShareLink() {
