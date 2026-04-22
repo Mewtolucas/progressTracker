@@ -447,6 +447,22 @@ main {
 
 .timeline-image {
     width: 100%;
+    max-width: 400px;
+    border-radius: 8px;
+    margin-top: 12px;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: block;
+    box-shadow: var(--shadow);
+}
+
+.timeline-image:hover {
+    transform: scale(1.02);
+    box-shadow: var(--shadow-lg);
+}
+
+.timeline-image {
+    width: 100%;
     max-width: 300px;
     border-radius: 6px;
     margin-bottom: 12px;
@@ -584,6 +600,53 @@ main {
     font-size: 0.85em;
     color: var(--text-secondary);
     font-style: italic;
+}
+
+/* Image Preview */
+.image-preview {
+    margin-top: 10px;
+    position: relative;
+}
+
+.image-preview.hidden {
+    display: none;
+}
+
+.image-preview img {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 6px;
+    box-shadow: var(--shadow);
+}
+
+.image-preview-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    padding: 10px;
+    background: var(--light-bg);
+    border-radius: 6px;
+}
+
+.image-preview-name {
+    font-size: 0.9em;
+    color: var(--text-secondary);
+}
+
+.remove-image-btn {
+    background: var(--danger-color);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em;
+    transition: background 0.3s ease;
+}
+
+.remove-image-btn:hover {
+    background: #dc2626;
 }
 
 

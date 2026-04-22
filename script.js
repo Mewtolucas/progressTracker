@@ -89,6 +89,11 @@ class ProgressTracker {
             this.toggleConditionalFields(e.target.value);
         });
 
+        // Image upload preview
+        document.getElementById('changeImage').addEventListener('change', (e) => {
+            this.handleImageUpload(e);
+        });
+
         // Timeline filters
         document.querySelectorAll('.filter-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -302,6 +307,36 @@ class ProgressTracker {
         }
     }
 
+    handleImageUpload(event) {
+        const file = event.target.files[0];
+        if (!file) {
+            document.getElementById('imagePreview').classList.add('hidden');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const preview = document.getElementById('imagePreview');
+            preview.innerHTML = `
+                <img src="${e.target.result}" alt="Preview">
+                <div class="image-preview-info">
+                    <span class="image-preview-name">📸 ${this.escapeHtml(file.name)}</span>
+                    <button type="button" class="remove-image-btn" onclick="tracker.removeImage()">Remove</button>
+                </div>
+            `;
+            preview.classList.remove('hidden');
+            // Store image data on the form for later use
+            document.getElementById('changeImage').dataset.imageData = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    removeImage() {
+        document.getElementById('changeImage').value = '';
+        document.getElementById('changeImage').dataset.imageData = '';
+        document.getElementById('imagePreview').classList.add('hidden');
+    }
+
     switchFilter(filter) {
         this.currentFilter = filter;
         document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -321,9 +356,16 @@ class ProgressTracker {
             type: document.getElementById('changeType').value,
             title: document.getElementById('changeTitle').value,
             description: document.getElementById('changeDescription').value,
+            image: null,
             dueDate: null,
             link: null
         };
+
+        // Handle image upload
+        const imageData = document.getElementById('changeImage').dataset.imageData;
+        if (imageData) {
+            entry.image = imageData;
+        }
 
         // Handle goal due date
         if (entry.type === 'goal') {
@@ -353,6 +395,8 @@ class ProgressTracker {
     resetForm() {
         document.getElementById('quickAddForm').reset();
         document.getElementById('changeDate').value = '';
+        document.getElementById('changeImage').dataset.imageData = '';
+        document.getElementById('imagePreview').classList.add('hidden');
         this.toggleConditionalFields('change');
     }
 
@@ -428,6 +472,10 @@ class ProgressTracker {
                         content += `<p class="timeline-description">${this.escapeHtml(entry.description)}</p>`;
                     }
 
+                    if (entry.image) {
+                        content += `<img src="${entry.image}" alt="${this.escapeHtml(entry.title)}" class="timeline-image" onclick="tracker.openImageModal('${entry.image.replace(/'/g, "\\'")}')">`;
+                    }
+
                     if (entry.dueDate) {
                         const dueDateObj = new Date(entry.dueDate);
                         const dueDateFormatted = dueDateObj.toLocaleDateString('en-US', {
@@ -450,6 +498,25 @@ class ProgressTracker {
                     return content;
                 }).join('');
             }).join('');
+    }
+
+    openImageModal(src) {
+        const modal = document.createElement('div');
+        modal.id = 'imageModal';
+        modal.className = 'modal show';
+        modal.style.zIndex = '2000';
+        modal.innerHTML = `
+            <div class="modal-content" style="background: transparent; box-shadow: none; width: auto; max-width: 90vw;">
+                <img src="${src}" alt="Full size image" style="max-width: 100%; max-height: 90vh; border-radius: 8px;">
+                <span class="modal-close" onclick="document.getElementById('imageModal').remove()" style="position: fixed; top: 20px; right: 20px; z-index: 2001;">✕</span>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
     }
 
     deleteEntry(id) {
